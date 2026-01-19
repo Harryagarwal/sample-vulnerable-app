@@ -42,9 +42,12 @@ Resources:
     Properties:
       BucketName: !Sub '${AWS::StackName}-bucket'  # Use stack name for bucket naming
       AccessControl: Private
-      # Added versioning configuration to enable versioning for the S3 bucket
-      VersioningConfiguration:
-        Status: Enabled
+      # Added server-side encryption configuration with AWS KMS
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3'  # Using AWS managed KMS key for S3
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn  # Now ReplicationRole is created first
         Rules:
