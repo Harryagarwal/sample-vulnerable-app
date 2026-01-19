@@ -3,7 +3,16 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: Sample CloudFormation template for an application
 
 Resources:
-  # Create the replication role first to avoid circular dependency
+  # Create S3 bucket first
+  AppBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-bucket'  # Use stack name for bucket naming
+      AccessControl: Private
+      # Remove ReplicationConfiguration to break circular dependency
+      # ReplicationConfiguration will be added after role creation using AWS::S3::BucketReplication
+
+  # Create the replication role after bucket
   ReplicationRole:
     Type: AWS::IAM::Role
     Properties:
@@ -37,13 +46,16 @@ Resources:
                   - s3:ReplicateTags
                 Resource: !Sub 'arn:aws:s3:::${AWS::StackName}-replica/*'
 
-  AppBucket:
-    Type: AWS::S3::Bucket
+  # Add bucket replication after both bucket and role are created
+  BucketReplication:
+    Type: AWS::S3::BucketReplication
+    DependsOn: [AppBucket, ReplicationRole]
     Properties:
-      BucketName: !Sub '${AWS::StackName}-bucket'  # Use stack name for bucket naming
-      AccessControl: Private
+      DestinationBucketName: !Sub '${AWS::StackName}-replica'
+      RoleArn: !GetAtt ReplicationRole.Arn
+      SourceBucketName: !Ref AppBucket
       ReplicationConfiguration:
-        Role: !GetAtt ReplicationRole.Arn  # Now ReplicationRole is created first
+        Role: !GetAtt ReplicationRole.Arn
         Rules:
           - Destination:
               Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
