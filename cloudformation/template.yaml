@@ -42,8 +42,6 @@ Resources:
     Properties:
       BucketName: !Sub '${AWS::StackName}-bucket'  # Use stack name for bucket naming
       AccessControl: Private
-      # Added ObjectLockEnabled parameter for enhanced data protection
-      ObjectLockEnabled: true  # Fix: Enable S3 Object Lock for data protection and compliance
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn  # Now ReplicationRole is created first
         Rules:
@@ -83,4 +81,5 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 0.0.0.0/0                     # Issue 4: SSH open to the world
+          # Fixed: Restricted SSH access to specific IP range instead of 0.0.0.0/0
+          CidrIp: 10.0.0.0/24                     # Restricted to internal network range
