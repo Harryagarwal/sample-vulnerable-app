@@ -42,12 +42,15 @@ Resources:
     Properties:
       BucketName: !Sub '${AWS::StackName}-bucket'  # Use stack name for bucket naming
       AccessControl: Private
+      # Added versioning configuration to enable versioning for the S3 bucket
+      VersioningConfiguration:
+        Status: Enabled
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn  # Now ReplicationRole is created first
         Rules:
           - Destination:
               Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
-            # Removed invalid 'Region' property as it's not allowed in ReplicationConfiguration
+              Region: us-west-2
             Status: Enabled
             Priority: 1
             DeleteMarkerReplication:
