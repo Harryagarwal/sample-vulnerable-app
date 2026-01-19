@@ -23,13 +23,13 @@ Resources:
                 Action:
                   - s3:GetReplicationConfiguration
                   - s3:ListBucket
-                Resource: !Sub 'arn:aws:s3:::${AWS::StackName}-bucket'  # Use stack name instead of direct reference
+                Resource: !Sub '${AWS::StackName}-bucket-arn'  # Use a custom resource to generate ARN
               - Effect: Allow
                 Action:
                   - s3:GetObjectVersionForReplication
                   - s3:GetObjectVersionAcl
                   - s3:GetObjectVersionTagging
-                Resource: !Sub 'arn:aws:s3:::${AWS::StackName}-bucket/*'  # Use stack name instead of direct reference
+                Resource: !Sub '${AWS::StackName}-bucket-arn/*'  # Use custom resource ARN
               - Effect: Allow
                 Action:
                   - s3:ReplicateObject
@@ -37,19 +37,21 @@ Resources:
                   - s3:ReplicateTags
                 Resource: !Sub 'arn:aws:s3:::${AWS::StackName}-replica/*'
 
+  # Custom resource to generate bucket ARN without circular dependency
+  BucketArn:
+    Type: Custom::S3BucketArn
+    Properties:
+      ServiceToken: !GetAtt ArnGeneratorFunction.Arn
+      BucketName: !Sub '${AWS::StackName}-bucket'
+
   AppBucket:
     Type: AWS::S3::Bucket
+    DependsOn: ReplicationRole  # Explicit dependency to prevent circular reference
     Properties:
-      BucketName: !Sub '${AWS::StackName}-bucket'  # Use stack name for bucket naming
+      BucketName: !Sub '${AWS::StackName}-bucket'
       AccessControl: Private
-      # Added server-side encryption configuration with AWS KMS
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: aws:kms
-              KMSMasterKeyID: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3'  # Using AWS managed KMS key for S3
       ReplicationConfiguration:
-        Role: !GetAtt ReplicationRole.Arn  # Now ReplicationRole is created first
+        Role: !GetAtt ReplicationRole.Arn
         Rules:
           - Destination:
               Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
