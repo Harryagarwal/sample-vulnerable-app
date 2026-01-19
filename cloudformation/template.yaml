@@ -23,13 +23,13 @@ Resources:
                 Action:
                   - s3:GetReplicationConfiguration
                   - s3:ListBucket
-                Resource: !Sub '${AWS::StackName}-bucket-arn'  # Use a custom resource to generate ARN
+                Resource: !Sub 'arn:aws:s3:::${AWS::StackName}-bucket'  # Use stack name instead of direct reference
               - Effect: Allow
                 Action:
                   - s3:GetObjectVersionForReplication
                   - s3:GetObjectVersionAcl
                   - s3:GetObjectVersionTagging
-                Resource: !Sub '${AWS::StackName}-bucket-arn/*'  # Use custom resource ARN
+                Resource: !Sub 'arn:aws:s3:::${AWS::StackName}-bucket/*'  # Use stack name instead of direct reference
               - Effect: Allow
                 Action:
                   - s3:ReplicateObject
@@ -37,21 +37,15 @@ Resources:
                   - s3:ReplicateTags
                 Resource: !Sub 'arn:aws:s3:::${AWS::StackName}-replica/*'
 
-  # Custom resource to generate bucket ARN without circular dependency
-  BucketArn:
-    Type: Custom::S3BucketArn
-    Properties:
-      ServiceToken: !GetAtt ArnGeneratorFunction.Arn
-      BucketName: !Sub '${AWS::StackName}-bucket'
-
   AppBucket:
     Type: AWS::S3::Bucket
-    DependsOn: ReplicationRole  # Explicit dependency to prevent circular reference
     Properties:
-      BucketName: !Sub '${AWS::StackName}-bucket'
+      BucketName: !Sub '${AWS::StackName}-bucket'  # Use stack name for bucket naming
       AccessControl: Private
+      # Added ObjectLockEnabled parameter for enhanced data protection
+      ObjectLockEnabled: true  # Fix: Enable S3 Object Lock for data protection and compliance
       ReplicationConfiguration:
-        Role: !GetAtt ReplicationRole.Arn
+        Role: !GetAtt ReplicationRole.Arn  # Now ReplicationRole is created first
         Rules:
           - Destination:
               Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
