@@ -5,10 +5,11 @@ Description: Sample CloudFormation template for an application
 Resources:
   AppBucket:
     Type: AWS::S3::Bucket
-    DependsOn: ReplicationRole  # Added explicit dependency to break circular reference
     Properties:
       BucketName: sample-app-bucket-12345
       AccessControl: Private                 # Fixed Issue 1: Removed public read ACL to ensure bucket is private
+      # Added Object Lock configuration for data protection and compliance
+      ObjectLockEnabled: true               # Added: Enable Object Lock for enhanced data protection
       # Added cross-region replication configuration for improved data durability and availability
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
@@ -41,13 +42,13 @@ Resources:
                 Action:
                   - s3:GetReplicationConfiguration
                   - s3:ListBucket
-                Resource: !Sub 'arn:aws:s3:::${AWS::StackName}*'  # Modified to use !Sub instead of !GetAtt to break circular dependency
+                Resource: !GetAtt AppBucket.Arn
               - Effect: Allow
                 Action:
                   - s3:GetObjectVersionForReplication
                   - s3:GetObjectVersionAcl
                   - s3:GetObjectVersionTagging
-                Resource: !Sub 'arn:aws:s3:::${AWS::StackName}*/*'  # Modified to use !Sub instead of direct reference
+                Resource: !Sub '${AppBucket.Arn}/*'
               - Effect: Allow
                 Action:
                   - s3:ReplicateObject
