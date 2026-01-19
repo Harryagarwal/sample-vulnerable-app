@@ -5,6 +5,7 @@ Description: Sample CloudFormation template for an application
 Resources:
   AppBucket:
     Type: AWS::S3::Bucket
+    DependsOn: ReplicationRole  # Added explicit dependency to break circular reference
     Properties:
       BucketName: sample-app-bucket-12345
       AccessControl: Private                 # Fixed Issue 1: Removed public read ACL to ensure bucket is private
@@ -19,28 +20,6 @@ Resources:
             Priority: 1
             DeleteMarkerReplication:
               Status: Enabled
-      # Added server-side encryption with AWS KMS for enhanced security
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: aws:kms
-              KMSMasterKeyID: !Ref BucketKMSKey  # Reference to the KMS key
-
-  # KMS key for S3 bucket encryption
-  BucketKMSKey:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: KMS key for S3 bucket encryption
-      EnableKeyRotation: true
-      KeyPolicy:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: Enable IAM User Permissions
-            Effect: Allow
-            Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
-            Resource: '*'
 
   # IAM role for S3 replication
   ReplicationRole:
@@ -62,13 +41,13 @@ Resources:
                 Action:
                   - s3:GetReplicationConfiguration
                   - s3:ListBucket
-                Resource: !GetAtt AppBucket.Arn
+                Resource: !Sub 'arn:aws:s3:::${AWS::StackName}*'  # Modified to use !Sub instead of !GetAtt to break circular dependency
               - Effect: Allow
                 Action:
                   - s3:GetObjectVersionForReplication
                   - s3:GetObjectVersionAcl
                   - s3:GetObjectVersionTagging
-                Resource: !Sub '${AppBucket.Arn}/*'
+                Resource: !Sub 'arn:aws:s3:::${AWS::StackName}*/*'  # Modified to use !Sub instead of direct reference
               - Effect: Allow
                 Action:
                   - s3:ReplicateObject
